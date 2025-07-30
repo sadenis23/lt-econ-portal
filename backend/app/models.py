@@ -13,6 +13,7 @@ class StakeholderRole(str, Enum):
     CITIZEN = "citizen"
 
 class DigestFrequency(str, Enum):
+    NEVER = "never"
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -38,7 +39,6 @@ class User(SQLModel, table=True):
 class Profile(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True)
-    first_name: Optional[str] = None
     role: Optional[StakeholderRole] = None
     language: Language = Field(default=Language.LT)
     newsletter: bool = Field(default=True)

@@ -36,7 +36,6 @@ async def get_my_profile(
     return {
         "id": profile.id,
         "user_id": profile.user_id,
-        "first_name": profile.first_name,
         "role": profile.role,
         "language": profile.language,
         "newsletter": profile.newsletter,
@@ -64,9 +63,6 @@ async def update_my_profile(
         session.add(profile)
     
     # Update profile fields
-    if "first_name" in profile_data:
-        profile.first_name = profile_data["first_name"]
-    
     if "role" in profile_data:
         try:
             profile.role = StakeholderRole(profile_data["role"])
@@ -89,13 +85,16 @@ async def update_my_profile(
         profile.newsletter = profile_data["newsletter"]
     
     if "digest_frequency" in profile_data:
-        try:
-            profile.digest_frequency = DigestFrequency(profile_data["digest_frequency"])
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid digest frequency"
-            )
+        digest_freq = profile_data["digest_frequency"]
+        if digest_freq:  # Only set if not empty
+            try:
+                profile.digest_frequency = DigestFrequency(digest_freq)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid digest frequency"
+                )
+        # If digest_freq is empty, keep the current value (don't change it)
     
     if "onboarding_completed" in profile_data:
         profile.onboarding_completed = profile_data["onboarding_completed"]

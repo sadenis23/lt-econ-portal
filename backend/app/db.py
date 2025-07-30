@@ -18,6 +18,7 @@ def init_db():
     with Session(engine) as session:
         # Check if we already have data
         if session.exec(select(User)).first():
+            print("Database already initialized, skipping data creation")
             return  # Database already initialized
         
         # Create sample topics
@@ -101,6 +102,9 @@ def init_db():
             existing = session.exec(select(Topic).where(Topic.slug == topic.slug)).first()
             if not existing:
                 session.add(topic)
+                print(f"Added topic: {topic.slug}")
+            else:
+                print(f"Topic already exists: {topic.slug}")
         
         # Create sample dashboards with tags
         import json
@@ -174,7 +178,13 @@ def init_db():
         for dataset in datasets:
             session.add(dataset)
         
-        session.commit()
+        try:
+            session.commit()
+            print("Database initialization completed successfully")
+        except Exception as e:
+            print(f"Error during database initialization: {e}")
+            session.rollback()
+            raise
 
 def get_session():
     """Get database session"""

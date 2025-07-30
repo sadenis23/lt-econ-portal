@@ -26,8 +26,22 @@ export default function PreferencesStep({
   isSubmitting,
   error,
 }: PreferencesStepProps) {
-  const { register, handleSubmit, watch, formState: { errors } } = form;
+  const { register, handleSubmit, watch, formState: { errors }, setValue, trigger } = form;
   const newsletter = watch("newsletter");
+
+  // Handle newsletter toggle
+  const handleNewsletterToggle = (checked: boolean) => {
+    setValue("newsletter", checked);
+    if (!checked) {
+      // Set digest_frequency to "never" when newsletter is disabled
+      setValue("digest_frequency", "never");
+    } else {
+      // Set default frequency when newsletter is enabled
+      setValue("digest_frequency", "weekly");
+    }
+    // Trigger validation after state change
+    trigger();
+  };
 
   return (
     <motion.div
@@ -60,6 +74,7 @@ export default function PreferencesStep({
                 type="checkbox"
                 {...register("newsletter")}
                 defaultChecked={data.newsletter !== false}
+                onChange={(e) => handleNewsletterToggle(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>

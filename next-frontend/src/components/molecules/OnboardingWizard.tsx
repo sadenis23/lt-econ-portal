@@ -6,19 +6,16 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
 
 import ProgressBar from "@/components/atoms/ProgressBar";
-import AccountStep from "./onboarding/AccountStep";
 import RoleStep from "./onboarding/RoleStep";
 import TopicsStep from "./onboarding/TopicsStep";
 import PreferencesStep from "./onboarding/PreferencesStep";
+import LanguageStep from "./onboarding/LanguageStep";
 import CompletionModal from "./onboarding/CompletionModal";
 
 // Form validation schemas
-const accountSchema = yup.object({
-  first_name: yup.string().required("First name is required").min(2, "First name must be at least 2 characters"),
-});
-
 const roleSchema = yup.object({
   role: yup.string().required("Please select your role"),
 });
@@ -29,23 +26,35 @@ const topicsSchema = yup.object({
 
 const preferencesSchema = yup.object({
   newsletter: yup.boolean(),
-  digest_frequency: yup.string().required("Please select digest frequency"),
+  digest_frequency: yup.string().when('newsletter', {
+    is: true,
+    then: (schema) => schema.required("Please select digest frequency").oneOf(['weekly', 'monthly', 'daily'], "Please select a valid frequency"),
+    otherwise: (schema) => schema.oneOf(['never'], "Invalid frequency for disabled newsletter"),
+  }),
+});
+
+const languageSchema = yup.object({
+  language: yup.string().required("Please select your preferred language").oneOf(['lt', 'en'], "Please select a valid language"),
 });
 
 interface OnboardingData {
-  first_name: string;
   role: string;
   topic_slugs: string[];
   newsletter: boolean;
   digest_frequency: string;
+  language: string;
 }
 
 const STEPS = [
-  { id: 1, title: "Account", component: AccountStep, schema: accountSchema },
-  { id: 2, title: "Role", component: RoleStep, schema: roleSchema },
-  { id: 3, title: "Topics", component: TopicsStep, schema: topicsSchema },
-  { id: 4, title: "Preferences", component: PreferencesStep, schema: preferencesSchema },
+  { id: 1, title: "Role & Goals", component: RoleStep, schema: roleSchema },
+  { id: 2, title: "Topics", component: TopicsStep, schema: topicsSchema },
+  { id: 3, title: "Preferences", component: PreferencesStep, schema: preferencesSchema },
+  { id: 4, title: "Language", component: LanguageStep, schema: languageSchema },
 ];
+
+// Note: We have 4 steps total, but only 3 user-input steps (Role, Topics, Preferences)
+// Language step is auto-selected based on browser locale
+const USER_INPUT_STEPS = 3;
 
 export default function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -56,6 +65,7 @@ export default function OnboardingWizard() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   // Check for deep link intent
   useEffect(() => {
@@ -71,9 +81,30 @@ export default function OnboardingWizard() {
     mode: "onChange",
   });
 
+  // Monitor form state for debugging
+  const { isValid, errors } = form.formState;
+  
+  useEffect(() => {
+    console.log('Form state changed:', {
+      currentStep,
+      isValid,
+      errors,
+      values: form.getValues(),
+    });
+  }, [currentStep, isValid, errors, form]);
+
   const handleNext = async () => {
+    console.log('handleNext called - currentStep:', currentStep);
+    console.log('Form values:', form.getValues());
+    console.log('Form errors:', form.formState.errors);
+    
     const isValid = await form.trigger();
-    if (!isValid) return;
+    console.log('Form validation result:', isValid);
+    
+    if (!isValid) {
+      console.log('Form validation failed, errors:', form.formState.errors);
+      return;
+    }
 
     const formData = form.getValues();
     const updatedData = { ...onboardingData, ...formData };
@@ -112,7 +143,36 @@ export default function OnboardingWizard() {
     setError("");
 
     try {
-      // For now, just save to localStorage and show completion modal
+      // Prepare profile data, handling digest_frequency properly
+      const profileData = {
+        role: data.role,
+        topic_slugs: data.topic_slugs,
+        newsletter: data.newsletter,
+        language: data.language,
+        onboarding_completed: true, // Mark as completed
+      };
+
+      // Only include digest_frequency if newsletter is enabled
+      if (data.newsletter && data.digest_frequency) {
+        profileData.digest_frequency = data.digest_frequency;
+      }
+
+      // Call the backend API to update the profile
+      const response = await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(profileData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Save to localStorage as backup
       localStorage.setItem("onboarding_completed", "true");
       localStorage.setItem("onboarding_data", JSON.stringify(data));
       
@@ -139,11 +199,17 @@ export default function OnboardingWizard() {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
       handleNext();
     } else if (e.key === "ArrowRight" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
       handleNext();
     } else if (e.key === "ArrowLeft" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
       handlePrevious();
+    } else if (e.key === "Enter" && currentStep === STEPS.length && isValid) {
+      e.preventDefault();
+      handleNext();
     }
   };
 
@@ -157,7 +223,14 @@ export default function OnboardingWizard() {
     const saved = localStorage.getItem("onboarding_data");
     if (saved) {
       try {
-        setOnboardingData(JSON.parse(saved));
+        const parsedData = JSON.parse(saved);
+        // Ensure digest_frequency has a valid value
+        if (parsedData.newsletter === false && !parsedData.digest_frequency) {
+          parsedData.digest_frequency = "never";
+        } else if (parsedData.newsletter === true && !parsedData.digest_frequency) {
+          parsedData.digest_frequency = "weekly";
+        }
+        setOnboardingData(parsedData);
       } catch (error) {
         console.error("Failed to load saved data:", error);
       }
@@ -176,6 +249,9 @@ export default function OnboardingWizard() {
           </h1>
           <p className="text-gray-600">
             Help us personalize your experience with relevant content and insights
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            {currentStep === 4 ? "Language preference will be auto-detected from your browser" : ""}
           </p>
         </div>
 
@@ -224,8 +300,9 @@ export default function OnboardingWizard() {
             
             <button
               onClick={handleNext}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (currentStep === STEPS.length && !isValid)}
               className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-disabled={isSubmitting || (currentStep === STEPS.length && !isValid)}
             >
               {isSubmitting ? "Saving..." : currentStep === STEPS.length ? "Complete" : "Continue"}
             </button>
@@ -246,7 +323,7 @@ export default function OnboardingWizard() {
         onClose={() => setShowCompletionModal(false)}
         onViewRecommendations={handleViewRecommendations}
         onFinishLater={handleFinishLater}
-        firstName={onboardingData.first_name || ""}
+        username={user?.username || ""}
       />
     </div>
   );

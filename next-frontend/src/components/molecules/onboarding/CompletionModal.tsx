@@ -7,7 +7,7 @@ interface CompletionModalProps {
   onClose: () => void;
   onViewRecommendations: () => void;
   onFinishLater: () => void;
-  firstName: string;
+  username: string;
 }
 
 export default function CompletionModal({
@@ -15,7 +15,7 @@ export default function CompletionModal({
   onClose,
   onViewRecommendations,
   onFinishLater,
-  firstName,
+  username,
 }: CompletionModalProps) {
   return (
     <AnimatePresence>
@@ -54,7 +54,7 @@ export default function CompletionModal({
                 transition={{ delay: 0.3 }}
               >
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  You're all set, {firstName || "there"}!
+                  You're all set, {username || "there"}!
                 </h2>
                 <p className="text-gray-600 mb-6">
                   Your profile is complete and we'll use your preferences to personalize your experience.

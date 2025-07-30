@@ -23,6 +23,17 @@ const config: Config = {
         },
         card: '#F7F9FC',
         accent: '#E5EFFF',
+        // Brand palette - WCAG AA compliant variants
+        brandMint: {
+          light: '#A8E6CF',
+          DEFAULT: '#2E7D32', // Much darker green for WCAG AA compliance
+          dark: '#1B5E20',
+        },
+        brandRose: {
+          light: '#FFB5B5',
+          DEFAULT: '#C62828', // Much darker red for WCAG AA compliance
+          dark: '#B71C1C',
+        },
         // Semantic tokens
         background: 'var(--color-background)',
         foreground: 'var(--color-foreground)',

@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
     
     // Try to refresh the access token
     console.log('Session check - Attempting to refresh token...');
-    const refreshResponse = await fetch(`http://localhost:8001/users/refresh`, {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const refreshResponse = await fetch(`${apiUrl}/users/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken.value }),
