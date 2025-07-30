@@ -4,4 +4,6 @@ sqlmodel
 psycopg2-binary
 pandas
 passlib[bcrypt]
-python-jose 
+python-jose[cryptography]
+python-multipart
+python-dotenv 
