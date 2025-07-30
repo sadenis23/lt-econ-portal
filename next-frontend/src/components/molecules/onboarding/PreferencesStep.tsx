@@ -109,7 +109,7 @@ export default function PreferencesStep({
                   </label>
                 ))}
               </div>
-              {errors.digest_frequency && (
+              {errors.digest_frequency && typeof errors.digest_frequency.message === 'string' && (
                 <p className="text-sm text-red-600">{errors.digest_frequency.message}</p>
               )}
             </motion.div>

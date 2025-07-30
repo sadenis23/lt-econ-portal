@@ -1,139 +1,100 @@
-"use client";
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+'use client';
 
-interface User {
-  username: string;
-  email: string;
-}
+import { createContext, useContext, useState } from 'react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useRouter } from 'next/navigation';
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (username: string, password: string) => Promise<boolean>;
+interface AuthContextValue extends ReturnType<typeof useCurrentUser> {
+  login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (username: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  loading: boolean;
+  logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const currentUser = useCurrentUser();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Check for existing session via API
-    const checkSession = async () => {
-      try {
-        console.log('Checking session...');
-        const res = await fetch('/api/auth/check-session', {
-          credentials: 'include',
-        });
-        
-        console.log('Session check response:', res.status);
-        
-        if (res.ok) {
-          const data = await res.json();
-          console.log('Session data:', data);
-          setToken(data.access_token);
-          setUser(data.user);
-        } else {
-          console.log('No valid session found');
-        }
-      } catch (error) {
-        console.error('Session check failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    checkSession();
-  }, []);
-
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    setLoading(true);
     try {
-      console.log('Attempting login for:', username);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ username, password }),
-      });
-      
-      console.log('Login response status:', res.status);
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error('Login failed:', errorData);
-        return false;
-      }
-      
-      const data = await res.json();
-      console.log('Login successful, setting tokens...');
-      
-      // Store tokens securely in memory only
-      setToken(data.access_token);
-      
-      // Decode the access token to get user info
-      const tokenPayload = JSON.parse(atob(data.access_token.split('.')[1]));
-      setUser({ username: tokenPayload.sub, email: '' });
-      
-      // Store refresh token in httpOnly cookie via API
-      console.log('Setting refresh token cookie...');
-      const cookieRes = await fetch('/api/auth/set-refresh-token', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: data.refresh_token }),
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
       });
       
-      console.log('Cookie set response:', cookieRes.status);
-      
-      return true;
+      if (response.ok) {
+        // Instead of reloading, manually revalidate the user data
+        await currentUser.mutate();
+        return { success: true };
+      }
+      const data = await response.json().catch(() => ({}));
+      return { success: false, message: data.error || 'Login failed' };
     } catch (error) {
       console.error('Login error:', error);
-      return false;
+      return { success: false, message: 'Internal error' };
+    } finally {
+      setLoading(false);
     }
   };
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+    setLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/users/register`, {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password_hash: password }),
+        credentials: 'include',
+        body: JSON.stringify({ username, email, password }),
       });
-      return res.ok;
-    } catch {
+      
+      if (response.ok) {
+        // After successful registration, revalidate user data
+        await currentUser.mutate();
+        return true;
+      }
       return false;
+    } catch (error) {
+      console.error('Register error:', error);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
-      // Clear refresh token via API
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
+      // Clear the user data from SWR cache
+      await currentUser.mutate(undefined, false);
+      router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      setToken(null);
-      setUser(null);
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value: AuthContextValue = {
+    ...currentUser,
+    login,
+    register,
+    logout,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error('useAuth must be in <AuthProvider>');
   return ctx;
-} 
+};
+
+export const useEmail = () => useAuth().user?.email ?? null;
+export const useProfileComplete = () => !!useAuth().user?.profile_complete; 

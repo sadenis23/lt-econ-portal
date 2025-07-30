@@ -74,7 +74,7 @@ export default function TopicsStep({
           </div>
         </div>
 
-        {errors.topic_slugs && (
+        {errors.topic_slugs && typeof errors.topic_slugs.message === 'string' && (
           <p className="text-sm text-red-600 text-center">{errors.topic_slugs.message}</p>
         )}
 

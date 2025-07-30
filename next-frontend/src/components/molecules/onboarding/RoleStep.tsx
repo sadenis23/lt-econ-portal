@@ -100,7 +100,7 @@ export default function RoleStep({
           ))}
         </div>
 
-        {errors.role && (
+        {errors.role && typeof errors.role.message === 'string' && (
           <p className="text-sm text-red-600 text-center">{errors.role.message}</p>
         )}
 

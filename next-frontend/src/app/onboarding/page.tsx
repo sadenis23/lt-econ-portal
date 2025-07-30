@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import OnboardingWizard from "@/components/molecules/OnboardingWizard";
 
 export default function OnboardingPage() {
-  return <OnboardingWizard />;
+  return (
+    <Suspense fallback={<div>Loading onboarding...</div>}>
+      <OnboardingWizard />
+    </Suspense>
+  );
 } 

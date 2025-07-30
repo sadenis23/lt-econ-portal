@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: { childr
   
   // Note: Admin check should be done server-side in production
   // This is a temporary client-side check for development
-  const isAdmin = user && user.username === 'admin';
+  const isAdmin = user && user.email === 'admin@example.com';
 
   useEffect(() => {
     if (!loading && !user) {

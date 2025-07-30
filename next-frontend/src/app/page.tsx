@@ -69,7 +69,7 @@ export default function HomePage() {
           ) : error ? (
             <div className="col-span-full text-center text-red-500">Failed to load dashboards.</div>
           ) : dashboards && dashboards.length > 0 ? (
-            dashboards.slice(0, 3).map((dashboard: any) => (
+            dashboards.slice(0, 3).map((dashboard: { id: string; title: string; description: string; tags: string[] }) => (
               <div key={dashboard.id} className="bg-card rounded-2xl shadow-elev-2 p-8 flex flex-col justify-between h-full border border-blue-100 hover:shadow-lg transition">
                 <h3 className="text-xl font-bold text-primary mb-2">{dashboard.title}</h3>
                 <p className="text-gray-700 mb-4">{dashboard.description || 'No description.'}</p>

@@ -77,7 +77,7 @@ export default function OnboardingWizard() {
 
   const currentStepConfig = STEPS[currentStep - 1];
   const form = useForm({
-    resolver: yupResolver(currentStepConfig.schema),
+    resolver: yupResolver(currentStepConfig.schema as any),
     mode: "onChange",
   });
 
@@ -153,8 +153,8 @@ export default function OnboardingWizard() {
       };
 
       // Only include digest_frequency if newsletter is enabled
-      if (data.newsletter && data.digest_frequency) {
-        profileData.digest_frequency = data.digest_frequency;
+      if (data.newsletter && (data as any).digest_frequency) {
+        (profileData as any).digest_frequency = (data as any).digest_frequency;
       }
 
       // Call the backend API to update the profile
@@ -269,7 +269,7 @@ export default function OnboardingWizard() {
               transition={{ duration: 0.3 }}
             >
               <CurrentStepComponent
-                form={form}
+                form={form as any}
                 data={onboardingData}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
@@ -323,7 +323,7 @@ export default function OnboardingWizard() {
         onClose={() => setShowCompletionModal(false)}
         onViewRecommendations={handleViewRecommendations}
         onFinishLater={handleFinishLater}
-        username={user?.username || ""}
+        username={user?.email || ""}
       />
     </div>
   );

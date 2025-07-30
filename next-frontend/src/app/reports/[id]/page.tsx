@@ -8,10 +8,14 @@ async function fetchReport(id: string) {
 }
 
 export default async function ReportDetailPage({ params }: { params: { id: string } }) {
-  let report: any = null;
+  let report: { id: string; title: string; content: string; date: string } | null = null;
   try {
     report = await fetchReport(params.id);
-  } catch (e) {
+  } catch {
+    return <div className="max-w-2xl mx-auto py-16 text-center text-red-500">Report not found.</div>;
+  }
+
+  if (!report) {
     return <div className="max-w-2xl mx-auto py-16 text-center text-red-500">Report not found.</div>;
   }
 

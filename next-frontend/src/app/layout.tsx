@@ -1,6 +1,6 @@
 import './globals.css';
 import { ReactNode } from 'react';
-import TopBar from '../components/organisms/TopBar';
+import Navbar from '../components/layouts/Navbar';
 import { AuthProvider } from '../context/AuthContext';
 
 export const metadata = {
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="bg-background text-foreground font-sans antialiased min-h-screen">
         <AuthProvider>
-          <TopBar />
+          <Navbar />
           <main className="pt-16">{children}</main>
         </AuthProvider>
       </body>

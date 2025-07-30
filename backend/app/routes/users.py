@@ -59,9 +59,8 @@ def register_user(user: User, request: Request):
         if existing:
             raise HTTPException(status_code=400, detail="Username or email already registered")
         
-        # Hash password properly
-        hashed_password = hash_password_for_bcrypt(user.password_hash)
-        user.password_hash = get_password_hash(hashed_password)
+        # Hash password properly - only use bcrypt, not double hashing
+        user.password_hash = get_password_hash(user.password_hash)
         
         session.add(user)
         session.commit()
@@ -82,23 +81,21 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     
     with Session(engine) as session:
         user = session.exec(select(User).where(User.username == form_data.username)).first()
-        
         # Use consistent error message to prevent user enumeration
         if not user or not verify_password(form_data.password, user.password_hash):
-            raise HTTPException(
-                status_code=401, 
-                detail="Invalid credentials"
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Invalid credentials"}
             )
-        
-        # Create access and refresh tokens
-        access_token = create_access_token(data={"sub": user.username})
-        refresh_token = create_refresh_token(data={"sub": user.username})
-        
+        # Create access and refresh tokens with user data
+        access_token = create_access_token(data={"sub": user.username, "email": user.email})
+        refresh_token = create_refresh_token(data={"sub": user.username, "email": user.email})
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": 900  # 15 minutes
+            "expires_in": 900
         }
 
 @router.post("/users/refresh")
@@ -115,6 +112,7 @@ async def refresh_token(request: Request):
         # Decode and validate refresh token
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
+        email = payload.get("email")
         token_type = payload.get("type")
         
         if not username or token_type != "refresh":
@@ -126,8 +124,8 @@ async def refresh_token(request: Request):
             if not user:
                 raise HTTPException(status_code=401, detail="User not found")
         
-        # Create new access token
-        new_access_token = create_access_token(data={"sub": username})
+        # Create new access token with user data
+        new_access_token = create_access_token(data={"sub": username, "email": email or user.email})
         
         return {
             "access_token": new_access_token,

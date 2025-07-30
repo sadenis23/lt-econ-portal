@@ -3,12 +3,15 @@ import { useState, useEffect, useCallback } from 'react';
 interface ProfileData {
   id: number;
   user_id: number;
+  username: string;
+  email: string;
   role: string;
   language: "lt" | "en";
   newsletter: boolean;
   digest_frequency: string;
   onboarding_completed: boolean;
   topic_slugs: string[];
+  topics: string[];
   created_at: string;
   updated_at: string;
 }
