@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const { username, password, remember_me } = body;
 
+    // Validate input
     if (!username || !password) {
       return NextResponse.json(
         { error: 'Username and password are required' },
@@ -11,48 +13,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Forward the request to the backend as form data (OAuth2PasswordRequestForm expects this)
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-
-    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/users/login`, {
+    // Forward request to backend
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const response = await fetch(`${backendUrl}/users/login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: formData.toString(),
+      body: JSON.stringify({ username, password, remember_me }),
     });
 
-    if (!backendResponse.ok) {
-      const errorData = await backendResponse.json().catch(() => ({}));
+    const data = await response.json();
+
+    if (response.ok) {
+      // Create response with cookies from backend
+      const nextResponse = NextResponse.json(data, { status: 200 });
+      
+      // Copy cookies from backend response
+      const setCookieHeaders = response.headers.getSetCookie();
+      setCookieHeaders.forEach(cookie => {
+        nextResponse.headers.append('Set-Cookie', cookie);
+      });
+
+      return nextResponse;
+    } else {
       return NextResponse.json(
-        { error: errorData.error || 'Invalid credentials' },
-        { status: 401 }
+        { error: data.detail || 'Login failed' },
+        { status: response.status }
       );
     }
-
-    const data = await backendResponse.json();
-
-    // Set the refresh token as an HTTP-only cookie
-    const response = NextResponse.json(
-      { message: 'Login successful' },
-      { status: 200 }
-    );
-
-    if (data.refresh_token) {
-      response.cookies.set('refresh_token', data.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60, // 7 days
-        path: '/',
-      });
-    }
-
-    return response;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

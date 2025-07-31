@@ -57,8 +57,8 @@ class RateLimiter:
         return window_start + self.window_seconds
 
 # Global rate limiter instances
-login_limiter = RateLimiter(max_attempts=20, window_seconds=300)  # 20 attempts per 5 minutes (increased for testing)
-register_limiter = RateLimiter(max_attempts=10, window_seconds=3600)  # 10 attempts per hour (increased for testing)
+login_limiter = RateLimiter(max_attempts=5, window_seconds=60)  # 5 attempts per minute for testing
+register_limiter = RateLimiter(max_attempts=3, window_seconds=60)  # 3 attempts per minute for testing
 
 def get_client_ip(request: Request) -> str:
     """Get client IP address, handling proxies"""

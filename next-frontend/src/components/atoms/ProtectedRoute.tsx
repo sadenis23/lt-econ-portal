@@ -1,36 +1,74 @@
-"use client";
-import { ReactNode, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useRouter } from 'next/navigation';
+'use client';
 
-export default function ProtectedRoute({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { motion } from 'framer-motion';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+export default function ProtectedRoute({ children, fallback, adminOnly }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  
-  // Note: Admin check should be done server-side in production
-  // This is a temporary client-side check for development
-  const isAdmin = user && user.email === 'admin@example.com';
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
-    } else if (!loading && adminOnly && !isAdmin) {
-      router.replace('/unauthorized');
+      router.push('/login');
     }
-  }, [user, loading, adminOnly, isAdmin, router]);
+    if (!loading && user && adminOnly && !user.is_admin) {
+      router.push('/unauthorized');
+    }
+  }, [user, loading, router, adminOnly]);
 
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <motion.div
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <motion.div
+            className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+          <p className="text-lg text-primary font-semibold">Loading...</p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
-  if (!user || (adminOnly && !isAdmin)) return null;
-  return <>{children}</>;
+  // Show fallback or redirect if not authenticated
+  if (!user) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+    return null; // Will redirect in useEffect
+  }
+
+  // Check admin access if required
+  if (adminOnly && !user.is_admin) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+    return null; // Will redirect in useEffect
+  }
+
+  // User is authenticated, show protected content
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {children}
+    </motion.div>
+  );
 } 

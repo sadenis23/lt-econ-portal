@@ -1,39 +1,79 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from .db import init_db
 from .routes import reports, users, datasets, dashboards, profiles, auth
-from fastapi import Request
 
 app = FastAPI(
     title="Lithuanian Economics Portal API",
     description="Secure API for Lithuanian economic data and analytics",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None
 )
 
-# Security middleware
+# Security middleware for production
 if os.getenv("ENVIRONMENT") == "production":
+    # Trusted hosts middleware
     app.add_middleware(
         TrustedHostMiddleware, 
-        allowed_hosts=["yourdomain.com", "www.yourdomain.com"]
+        allowed_hosts=os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     )
+    
+    # HTTPS redirect middleware
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 # Add CORS middleware for frontend-backend integration
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_credentials=True,  # Important for cookies
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Set-Cookie"],  # Allow frontend to see cookie headers
 )
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+    
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    
+    # Content Security Policy (CSP)
+    csp_policy = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https:; "
+        "frame-ancestors 'none';"
+    )
+    response.headers["Content-Security-Policy"] = csp_policy
+    
+    # HSTS header (only in production)
+    if os.getenv("ENVIRONMENT") == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    
+    return response
 
 @app.on_event("startup")
 def on_startup():
+    """Initialize database on startup"""
     init_db()
 
+# Include routers
 app.include_router(reports.router)
 app.include_router(users.router)
 app.include_router(datasets.router)
@@ -43,10 +83,16 @@ app.include_router(auth.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Lithuanian Economics Portal API!"}
+    """Root endpoint"""
+    return {
+        "message": "Welcome to the Lithuanian Economics Portal API!",
+        "version": "1.0.0",
+        "docs": "/docs" if os.getenv("ENVIRONMENT") != "production" else None
+    }
 
 @app.get("/test")
 def test_endpoint():
+    """Health check endpoint"""
     return {"status": "ok", "message": "Backend is accessible"}
 
 @app.get("/sources")
@@ -181,40 +227,16 @@ def set_refresh_token():
     # This is a placeholder - in a real app, you'd set the refresh token in cookies
     return {"message": "Refresh token set successfully"}
 
-@app.post("/api/auth/logout")
-def logout():
-    """Logout user (placeholder for now)"""
-    # This is a placeholder - in a real app, you'd clear the refresh token cookie
-    return {"message": "Logged out successfully"}
-
 @app.get("/api/auth/check-session")
 def check_session():
     """Check if user session is valid (placeholder for now)"""
     # This is a placeholder - in a real app, you'd validate the session
     return {"authenticated": False, "message": "No valid session found"}
 
-@app.post("/api/auth/secure-logout")
-def secure_logout():
-    """Secure logout user (placeholder for now)"""
-    # This is a placeholder - in a real app, you'd perform secure logout
-    return {"message": "Secure logout completed"}
-
 @app.get("/api/test-backend")
 def test_backend():
     """Test backend connectivity"""
     return {"status": "ok", "message": "Backend is accessible via API"}
-
-@app.post("/api/auth/login")
-def login():
-    """Login user (placeholder for now)"""
-    # This is a placeholder - in a real app, you'd validate credentials
-    return {"message": "Login successful", "refresh_token": "placeholder-token"}
-
-@app.post("/api/auth/register")
-def register():
-    """Register user (placeholder for now)"""
-    # This is a placeholder - in a real app, you'd create user account
-    return {"message": "Registration successful", "refresh_token": "placeholder-token"}
 
 @app.get("/api/reports")
 def get_reports():
@@ -323,12 +345,6 @@ def get_datasets():
         }
     ]
 
-@app.post("/api/users/refresh")
-def refresh_token():
-    """Refresh access token (placeholder for now)"""
-    # This is a placeholder - in a real app, you'd validate refresh token and issue new access token
-    return {"access_token": "new-access-token", "message": "Token refreshed successfully"}
-
 @app.patch("/api/profiles/me")
 def update_profile_me():
     """Update current user profile (placeholder for now)"""
@@ -337,6 +353,10 @@ def update_profile_me():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    """Global exception handler for security"""
+    # Log the error (in production, use proper logging)
+    print(f"Unhandled exception: {exc}")
+    
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"}

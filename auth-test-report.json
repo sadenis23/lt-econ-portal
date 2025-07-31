@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-07-31T23:03:48.946Z",
+  "summary": {
+    "total": 10,
+    "passed": 7,
+    "failed": 3,
+    "successRate": 70
+  },
+  "results": [
+    {
+      "test": "New User Registration",
+      "success": true,
+      "duration": 8832,
+      "error": null
+    },
+    {
+      "test": "Existing User Login",
+      "success": true,
+      "duration": 4129,
+      "error": null
+    },
+    {
+      "test": "Invalid Password",
+      "success": true,
+      "duration": 3291,
+      "error": null
+    },
+    {
+      "test": "Duplicate Email",
+      "success": true,
+      "duration": 3573,
+      "error": null
+    },
+    {
+      "test": "Rate Limiting",
+      "success": true,
+      "duration": 1692,
+      "error": null
+    },
+    {
+      "test": "Visual Feedback Timing",
+      "success": false,
+      "duration": 1392,
+      "error": "No loading indicator"
+    },
+    {
+      "test": "Token Persistence",
+      "success": false,
+      "duration": 2259,
+      "error": "Login failed"
+    },
+    {
+      "test": "Token Expiration",
+      "success": false,
+      "duration": 2294,
+      "error": "Login failed"
+    },
+    {
+      "test": "Manual Token Removal",
+      "success": true,
+      "duration": 2974,
+      "error": null
+    },
+    {
+      "test": "Dark Mode Layout",
+      "success": true,
+      "duration": 1072,
+      "error": null
+    }
+  ]
+}

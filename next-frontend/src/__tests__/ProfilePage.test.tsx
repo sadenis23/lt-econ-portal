@@ -1,12 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
-import ProfilePage from '../app/profile/page';
+import ProfilePageClient from '../app/profile/ProfilePageClient';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 
 // Mock dependencies
-jest.mock('next/navigation');
 jest.mock('../context/AuthContext');
 jest.mock('../hooks/useProfile');
 jest.mock('../components/atoms/ProtectedRoute', () => {
@@ -15,11 +14,10 @@ jest.mock('../components/atoms/ProtectedRoute', () => {
   };
 });
 
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
-const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
+const mockUseAuth = jest.mocked(useAuth);
+const mockUseProfile = jest.mocked(useProfile);
 
-describe('ProfilePage', () => {
+describe('ProfilePageClient', () => {
   const mockRouter = {
     replace: jest.fn(),
     push: jest.fn(),
@@ -46,7 +44,6 @@ describe('ProfilePage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseRouter.mockReturnValue(mockRouter);
     mockUseAuth.mockReturnValue({
       user: mockUser,
       logout: jest.fn(),
@@ -67,7 +64,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('testuser')).toBeInTheDocument();
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
@@ -84,7 +81,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     // Check for skeleton loading elements
     expect(screen.getByTestId('protected-route')).toBeInTheDocument();
@@ -101,7 +98,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('Complete Setup')).toBeInTheDocument();
     expect(screen.getByText('Profile Incomplete')).toBeInTheDocument();
@@ -117,7 +114,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('Profile Complete')).toBeInTheDocument();
     expect(screen.getByText('Edit Profile')).toBeInTheDocument();
@@ -134,7 +131,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('Failed to load profile')).toBeInTheDocument();
     expect(screen.getByText('Try again')).toBeInTheDocument();
@@ -154,7 +151,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     fireEvent.click(screen.getByText('Complete Setup'));
     expect(mockRouter.push).toHaveBeenCalledWith('/onboarding');
@@ -170,7 +167,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     fireEvent.click(screen.getByText('Edit Profile'));
     expect(mockRouter.push).toHaveBeenCalledWith('/onboarding');
@@ -186,7 +183,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('Topics of Interest')).toBeInTheDocument();
     expect(screen.getByText('economy')).toBeInTheDocument();
@@ -203,7 +200,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('policy maker')).toBeInTheDocument();
   });
@@ -218,7 +215,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('English')).toBeInTheDocument();
   });
@@ -233,7 +230,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('weekly')).toBeInTheDocument();
   });
@@ -249,7 +246,7 @@ describe('ProfilePage', () => {
       refetch: jest.fn(),
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(screen.getByText('Disabled')).toBeInTheDocument();
   });
@@ -264,7 +261,7 @@ describe('ProfilePage', () => {
       loading: false,
     });
 
-    render(<ProfilePage />);
+    render(<ProfilePageClient />);
 
     expect(mockRouter.replace).toHaveBeenCalledWith('/login');
   });
